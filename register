@@ -1,0 +1,99 @@
+#!/usr/bin/env sh
+
+root_dir="$(cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit 1; pwd -P)"
+cd "$root_dir" || exit 1
+
+# argument processing
+allow_no_bind=false
+provided_bind=
+show_help=false
+while [ $# -gt 0 ]; do
+    case "$1" in
+    --allow-no-bind)
+        allow_no_bind=true
+        shift
+        ;;
+    --gid)
+        SAMBA_GID="$2"
+        shift
+        shift
+        ;;
+    --help|-h)
+        show_help=true
+        break
+        ;;
+    --mount)
+        SAMBA_MOUNT="$2"
+        shift
+        shift
+        ;;
+    --uid)
+        SAMBA_UID="$2"
+        shift
+        shift
+        ;;
+    -*)
+        echo "unknown option: $1"
+        exit 1
+        ;;
+    *)
+        if [ -z "$provided_bind" ]; then
+            provided_bind=$1
+            shift
+        else
+            echo "unknown argument: $1"
+            exit 1
+        fi
+        ;;
+    esac
+done
+
+if [ -n "$provided_bind" ]; then
+    SAMBA_BIND=$provided_bind
+fi
+
+# help information
+if [ "$show_help" = true ]; then
+    cat <<EOF
+Usage: register [OPTION] BIND_ID
+Register smb-devbox-share container service.
+
+Arguments:
+    BIND_ID                 IP address to bind the smbd container to
+
+Options:
+   --allow-no-bind          Allow registering without binding
+   --gid <id>               Group ID for user of mount path
+   -h, --help               Display usage information
+   --mount <path>           Path to mount (default: /srv/share)
+   --uid <id>               User ID for user of mount path
+
+Examples:
+    (typical setup)
+    ./register 192.168.61.50
+    (running smb share with a 'share' folder in the home directory)
+    ./register 192.168.61.50 --mount ~/share
+EOF
+    exit 0
+fi
+
+# check if no bind is provided
+if [ "$allow_no_bind" = false ] && [ -z "$SAMBA_BIND" ]; then
+    echo "(error) no ip has been provided"
+    exit 0
+fi
+
+# attempt to auto-detect uid/gid values
+if [ -z "$SAMBA_GID" ]; then
+    SAMBA_GID=$(id -g 2>/dev/null)
+fi
+if [ -z "$SAMBA_UID" ]; then
+    SAMBA_UID=$(id -u 2>/dev/null)
+fi
+
+# run the service
+export SAMBA_BIND
+export SAMBA_GID
+export SAMBA_MOUNT
+export SAMBA_UID
+docker compose up --build --detach

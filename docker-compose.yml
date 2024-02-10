@@ -1,0 +1,12 @@
+name: smb-devbox-share
+services:
+  smb:
+    build:
+      args:
+        SAMBA_GID: ${SAMBA_GID:-1000}
+        SAMBA_UID: ${SAMBA_UID:-1000}
+    ports:
+      - "${SAMBA_BIND:-}:445:445"
+    restart: unless-stopped
+    volumes:
+      - ${SAMBA_MOUNT:-/srv/share}:/srv/share
