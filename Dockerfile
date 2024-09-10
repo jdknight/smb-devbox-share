@@ -7,6 +7,7 @@ ARG SAMBA_GID=1000
 ARG SAMBA_UID=1000
 RUN addgroup --gid $SAMBA_GID samba
 RUN adduser --uid $SAMBA_UID --ingroup samba --system samba
+RUN (echo samba; echo samba) | smbpasswd -s -a samba
 
 # prepare samba-specific directories
 RUN d="/run/samba /var/cache/samba /var/lib/samba /var/log/samba"; \
